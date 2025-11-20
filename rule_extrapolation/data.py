@@ -11,6 +11,7 @@ PAD_token = np.array([2])
 A_token = np.array([3])
 B_token = np.array([4])
 C_token = np.array([5])
+D_token = np.array([6])
 
 # only for parentheses and brackets
 OPENING_PARENTHESIS_token = np.array([3])
@@ -37,6 +38,96 @@ class GrammarMetrics:
 
     def to_dict(self) -> Dict[str, float]:
         return dataclasses.asdict(self)
+
+# Chris's new language. The structure was created by ChatGPT. 
+# aNbKN | N >= 0
+# adapted from generate_aNbN_grammar_data function
+def generate_aNbKN_grammer_data(
+    num_samples: int,
+    max_length: int = 32,
+    k: int = None,
+) -> list:
+    """
+    PCFG with two rules:
+    - for every n 'a's, there are k * n 'b's where k is > 0 & < 6
+    - 'a's before 'b's
+
+    :param num_samples: number of samples
+    :param max_length: maximum sequence length (inclusive SOS and EOS tokens)
+    :param k: integer that will be determined when grammer runs. Will be integer 1 - 5 only
+    :return: list of length num_samples with maximal sequences of length max_length
+
+    """
+    if k is None:
+        k = random.randint(1,5)
+
+    lengths1 = np.random.randint(low=1, high=max_length // 2 + 1, size=num_samples)
+
+    data = []
+
+    for length in lengths:
+        data.append(
+            np.concatenate(
+                (
+                    SOS_token,
+                    A_token * np.ones(length),
+                    B_token * np.ones(length * k),
+                    EOS_token,
+                )
+            )
+        )
+
+    return data # list containing the sequences of max length max_length+2
+
+# Chris's new language. The structure was created by ChatGPT. It should still be Context Free.
+# adapted from generate_aNbN_grammar_data function
+def generate_aIbJcKdl_grammer_data(
+    num_samples: int,
+    max_length = np.iinfo(np.int32).max // 4,
+) -> list:
+    """
+    PCFG with two rules:
+    - i + j = k + l 
+    - 'a's before 'b's before 'c's before 'd's
+    :param num_samples: number of samples
+    :param max_length: maximum sequence length (inclusive SOS and EOS tokens)
+    :param k: integer that will be determined when grammer runs. Will be integer 1 - 5 only
+    :return: list of length num_samples with maximal sequences of length max_length
+    """
+
+    data = []
+
+    int32_min, int32_max = np.iinfo(np.int32).min, np.iinfo(np.int32).max
+
+    for _ in range(num_samples):
+
+        lengthI = np.random.randint(low = 0, high=max_length, dtype=np.int32)
+        lengthJ = np.random.randint(low = 0, high=max_length, dtype=np.int32)
+        lengthK = np.random.randint(low = 0, high=max_length, dtype=np.int32)
+        lengthL = lengthI + lengthJ - lengthK
+
+        if lengthL < int32_min or lengthL > int32_max:
+            continue # resample this tuple safely
+
+        # Optional Safety: ensure lengthL is non-negative Length
+        if lengthL < 0:
+            continue
+
+    
+        data.append(
+            np.concatenate(
+                (
+                    SOS_token,
+                    A_token * np.ones(lengthI),
+                    B_token * np.ones(lengthJ),
+                    C_token * np.ones(lengthK),
+                    D_token * np.ones(lengthL),
+                    EOS_token,
+                )
+            )
+        )
+
+    return data # list containing the sequences of max length max_length+2
 
 
 # generates aNbN grammar: all sequences, all even, all odd or sequences of random length and num_samples number
