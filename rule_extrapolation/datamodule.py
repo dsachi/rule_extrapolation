@@ -55,6 +55,11 @@ class GrammarDataModule(pl.LightningDataModule):
         """
         if self.hparams.grammar == "aNbN":
             return generate_aNbN_grammar_data
+        #Chris's new languages
+        elif self.hparams.grammar == "aNbKN":
+            return generate_aNbKN_grammer_data
+        elif self.hparams.grammar == "aIbKcJdL":
+            return generate_aIbJcKdl_grammer_data
         elif self.hparams.grammar == "abN":
             return generate_abN_grammar_data
         elif self.hparams.grammar == "baN":

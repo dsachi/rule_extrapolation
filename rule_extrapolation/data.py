@@ -81,7 +81,7 @@ def generate_aNbKN_grammer_data(
 
 # Chris's new language. The structure was created by ChatGPT. It should still be Context Free.
 # adapted from generate_aNbN_grammar_data function
-def generate_aIbJcKdl_grammer_data(
+def generate_aIbJcKdL_grammar_data(
     num_samples: int,
     max_length = np.iinfo(np.int32).max // 4,
 ) -> list:
@@ -829,6 +829,62 @@ def check_separated_brackets_and_parentheses_prompts(sequence: torch.Tensor):
     else:
         return True
 
+#New code - (Created by ChatGPT)
+def check_as_before_bs_before_cs_before_ds(sequence: torch.Tensor):
+    """
+    Check that all a's come before all b's, all b's come before all c's,
+    and all c's come before all d's in the sequence.
+
+    Applies to aIbJcKdL grammar.
+
+    :param sequence: torch.Tensor or numpy array
+    :return: bool
+    """
+
+    if type(sequence) == np.ndarray:
+        sequence = torch.from_numpy(sequence)
+
+    #Get positions of each symbols
+    a_pos = torch.where(sequence == A_token.item())[0]
+    b_pos = torch.where(sequence == B_token.item())[0]
+    c_pos = torch.where(sequence == C_token.item())[0]
+    d_pos = torch.where(sequence == D_token.item())[0]
+
+    # A -> B check
+    if len(a_pos) > 0 and len(b_pos) > 0:
+        if not (a_pos[-1] < b_pos[0]):
+            return False
+
+    # B -> C check
+    if len(b_pos) > 0 and len(c_pos) > 0:
+        if not (b_pos[-1] < c_pos[0]):
+            return False
+
+    # C -> D check
+    if len(c_pos) > 0 and len(d_pos) > 0:
+        if not (c_pos[-1] < d_pos[0]):
+            return False
+
+    return True
+
+
+def check_i_plus_j_equals_k_plus_l(sequence: torch.Tensor) -> bool:
+    """
+    Check whether (#a + #b) == (#c + #d) for aIbJcKdL grammer
+
+    :param sequence: torch.Tensor or numpy array
+    :return: bool
+    """
+
+    if type(sequence) == np.ndarray:
+        sequence = torch.from_numpy(sequence)
+    
+    num_as = torch.sum(sequence == A_token.item())
+    num_bs = torch.sum(sequence == B_token.item())
+    num_cs = torch.sum(sequence == C_token.item())
+    num_ds = torch.sum(sequence == D_token.item())
+
+    return (num_as + num_bs) == (num_cs + num_ds)
 
 def generate_test_prompts(length: int = 6, grammar: str = "aNbN"):
     """
@@ -856,6 +912,26 @@ def generate_test_prompts(length: int = 6, grammar: str = "aNbN"):
             (torch.ones((prompts.shape[0], 1), dtype=torch.long) * SOS_token, prompts),
             dim=1,
         )
+    #New check here
+    elif grammar == "aIbJcKdL":
+        # NEW LANGUAGE: 4 symbols a,b,c,d
+        symbols = [
+            A_token.item(),
+            B_token.item(),
+            C_token.item(),
+            D_token.item(),
+        ]
+        prompts = torch.tensor(
+            list(product(symbols, repeat=length)), dtype=torch.long
+        )
+    
+        # add SOS
+        prompts = torch.cat(
+            (torch.ones((prompts.shape[0], 1), dtype=torch.long) * SOS_token, prompts),
+            dim=1,
+        )
+
+
     elif grammar == "bbaN":
         ID_data = torch.tensor(
             np.array(
@@ -1130,6 +1206,13 @@ def grammar_rules(grammar):
         return lambda x: check_matched_parentheses(x) and check_matched_brackets(x)
     elif grammar == "separated_brackets_and_parentheses":
         return lambda x: check_separated_brackets_and_parentheses(x)
+
+    # New grammar
+    elif grammar == "aIbJcKdL":
+        return lambda x: (
+            check_as_before_bs_before_cs_before_ds(x)
+            and check_i_plus_j_equals_k_plus_l(x)
+        )
     else:
         raise ValueError(f"Unknown grammar {grammar}")
 
@@ -1168,6 +1251,17 @@ def prompt_grammar_rules(grammar):
         return lambda x: check_matched_brackets(x) and check_matched_parentheses(x)
     elif grammar == "separated_brackets_and_parentheses":
         return lambda x: check_separated_brackets_and_parentheses_prompts(x)
+    
+        #New Language
+    elif grammar == "aIbJcKdL":
+        return lambda x: (
+            #symbol order must still be possible
+            check_as_before_bs_before_cs_before_ds(x)
+            #count condition must still allow completion:
+            and (torch.sum(x == A_token.item()) + torch.sum(x == B_token.item()))
+                >= (torch.sum(x == C_token.item()) + torch.sum(x == D_token.item()))
+        )
+
     else:
         raise ValueError(f"Unknown grammar {grammar}")
 
